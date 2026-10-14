@@ -17,19 +17,23 @@ let state = {
 function loadState() {
   try {
     if (fs.existsSync(DATA_FILE)) {
-      state = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+      const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+      state = { ...state, ...data };
     }
-  } catch (e) {}
+  } catch (e) {
+    console.log('Kein gespeicherter State gefunden');
+  }
   ensureAgents();
 }
 
 function saveState() {
   try {
-    if (!fs.existsSync(path.dirname(DATA_FILE))) {
-      fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-    }
+    const dir = path.dirname(DATA_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(DATA_FILE, JSON.stringify(state, null, 2));
-  } catch (e) {}
+  } catch (e) {
+    console.log('Speichern fehlgeschlagen:', e.message);
+  }
 }
 
 function getTodayKey() {
@@ -46,12 +50,12 @@ function checkDailyReset() {
 }
 
 function ensureAgents() {
-  if (!state.cryptoAgents.length) {
+  if (!state.cryptoAgents || !state.cryptoAgents.length) {
     state.cryptoAgents = Array.from({length:5}, (_,i) => ({
       id: "C"+(i+1), role: "Trainee", progress: 15 + Math.random()*20, mistakes: 0, wins: 0
     }));
   }
-  if (!state.forexAgents.length) {
+  if (!state.forexAgents || !state.forexAgents.length) {
     state.forexAgents = Array.from({length:10}, (_,i) => ({
       id: "F"+(i+1), role: "Trainee", progress: 10 + Math.random()*18, mistakes: 0, wins: 0
     }));
@@ -108,22 +112,14 @@ function tick() {
     const agent = mainIds[Math.floor(Math.random() * mainIds.length)];
     let coin = "BTC";
 
-    // Strenge Regeln
     if (agent.startsWith("F") || agent === "FOREX") {
       coin = ["XAU","XAG","US30","NASDAQ"][Math.floor(Math.random()*4)];
-    } else if (agent === "BTC") {
-      coin = "BTC";
-    } else if (agent === "ALT") {
-      coin = Math.random() > 0.5 ? "SOL" : "ETH";
-    } else if (agent === "MEME") {
-      coin = "MEME";
-    } else if (agent.startsWith("C")) {
-      coin = ["BTC","SOL","ETH"][Math.floor(Math.random()*3)];
-    } else if (agent === "Risk") {
-      coin = ["BTC","SOL","ETH","XAU"][Math.floor(Math.random()*4)];
-    } else {
-      coin = "BTC";
-    }
+    } else if (agent === "BTC") coin = "BTC";
+    else if (agent === "ALT") coin = Math.random() > 0.5 ? "SOL" : "ETH";
+    else if (agent === "MEME") coin = "MEME";
+    else if (agent.startsWith("C")) coin = ["BTC","SOL","ETH"][Math.floor(Math.random()*3)];
+    else if (agent === "Risk") coin = ["BTC","SOL","ETH","XAU"][Math.floor(Math.random()*4)];
+    else coin = "BTC";
 
     const entry = (Math.random() * 100 + 50).toFixed(2);
     const pnl = (Math.random()*2.2 - 0.7).toFixed(2);
