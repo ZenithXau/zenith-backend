@@ -108,13 +108,22 @@ function tick() {
     const agent = mainIds[Math.floor(Math.random() * mainIds.length)];
     let coin = "BTC";
 
-    if (agent === "BTC") coin = "BTC";
-    else if (agent === "ALT") coin = Math.random() > 0.5 ? "SOL" : "ETH";
-    else if (agent === "MEME") coin = "MEME";
-    else if (agent === "FOREX" || agent.startsWith("F")) coin = ["XAU","XAG","US30","NASDAQ"][Math.floor(Math.random()*4)];
-    else if (agent.startsWith("C")) coin = ["BTC","SOL","ETH"][Math.floor(Math.random()*3)];
-    else if (agent === "Risk") coin = ["BTC","SOL","ETH","XAU"][Math.floor(Math.random()*4)];
-    else coin = "BTC";
+    // Strenge Regeln
+    if (agent.startsWith("F") || agent === "FOREX") {
+      coin = ["XAU","XAG","US30","NASDAQ"][Math.floor(Math.random()*4)];
+    } else if (agent === "BTC") {
+      coin = "BTC";
+    } else if (agent === "ALT") {
+      coin = Math.random() > 0.5 ? "SOL" : "ETH";
+    } else if (agent === "MEME") {
+      coin = "MEME";
+    } else if (agent.startsWith("C")) {
+      coin = ["BTC","SOL","ETH"][Math.floor(Math.random()*3)];
+    } else if (agent === "Risk") {
+      coin = ["BTC","SOL","ETH","XAU"][Math.floor(Math.random()*4)];
+    } else {
+      coin = "BTC";
+    }
 
     const entry = (Math.random() * 100 + 50).toFixed(2);
     const pnl = (Math.random()*2.2 - 0.7).toFixed(2);
@@ -148,9 +157,7 @@ function startEngine() {
   console.log("Agent Engine gestartet");
 }
 
-function getState() {
-  return state;
-}
+function getState() { return state; }
 
 function promoteAgent(id) {
   let ag = state.cryptoAgents.find(a => a.id === id) || state.forexAgents.find(a => a.id === id);
