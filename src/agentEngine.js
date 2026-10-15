@@ -1,7 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_FILE = path.join(__dirname, '../data/state.json');
+const BIN_ID = "6acbcb30ffd5d16053620b81";
+const ACCESS_KEY = "$2a$10$Q.INdPZI/hpyLQXoNjZLm.cvniQQ3bHQkqCIIXW0wdEH/yjLYTsJC";
+const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 
 let state = {
   cryptoAgents: [],
@@ -21,22 +23,37 @@ let state = {
   ]
 };
 
-function loadState() {
+async function loadState() {
   try {
-    if (fs.existsSync(DATA_FILE)) {
-      const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-      state = { ...state, ...data };
+    const res = await fetch(BIN_URL + "/latest", {
+      headers: { "X-Access-Key": ACCESS_KEY }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.record) {
+        state = { ...state, ...data.record };
+        console.log("State von JSONBin geladen");
+      }
     }
-  } catch (e) {}
+  } catch (e) {
+    console.log("JSONBin Load fehlgeschlagen:", e.message);
+  }
   ensureAgents();
 }
 
-function saveState() {
+async function saveState() {
   try {
-    const dir = path.dirname(DATA_FILE);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(DATA_FILE, JSON.stringify(state, null, 2));
-  } catch (e) {}
+    await fetch(BIN_URL, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Access-Key": ACCESS_KEY
+      },
+      body: JSON.stringify(state)
+    });
+  } catch (e) {
+    console.log("JSONBin Save fehlgeschlagen:", e.message);
+  }
 }
 
 function getTodayKey() {
@@ -127,7 +144,7 @@ function getBestMeme() {
   return scored[0];
 }
 
-function tick() {
+async function tick() {
   checkDailyReset();
   ensureAgents();
   cleanupOldTrades();
@@ -217,14 +234,15 @@ function tick() {
     addLog(`${agent} Trade ${coin}${memeInfo} ${trade.side} @ ${trade.entry} · PnL ${pnl}%`);
   }
 
-  saveState();
+  await saveState();
 }
 
 function startEngine() {
-  loadState();
-  setInterval(tick, 8000);
-  fetchPumpFunTokens();
-  console.log("Agent Engine gestartet");
+  loadState().then(() => {
+    setInterval(tick, 8000);
+    fetchPumpFunTokens();
+    console.log("Agent Engine gestartet mit JSONBin Persistenz");
+  });
 }
 
 function getState() { return state; }
