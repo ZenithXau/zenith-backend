@@ -12,6 +12,7 @@ let state = {
   openTrades: [],
   todayTrades: [],
   lastResetDate: null,
+  totalTradeCount: 0,
   recentMemes: [],
   goodWallets: [
     { address: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM", winRate: 72, name: "SmartTrader1" },
@@ -43,11 +44,28 @@ function getTodayKey() {
   return d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate();
 }
 
+function getDateKey(offsetDays = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() - offsetDays);
+  return d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate();
+}
+
 function checkDailyReset() {
   const today = getTodayKey();
   if (state.lastResetDate !== today) {
     state.todayTrades = [];
     state.lastResetDate = today;
+  }
+}
+
+function cleanupOldTrades() {
+  const cutoff = getDateKey(3);
+  state.liveTrades = state.liveTrades.filter(t => {
+    if (!t.dateKey) return true;
+    return t.dateKey >= cutoff;
+  });
+  if (state.liveTrades.length > 10000) {
+    state.liveTrades = state.liveTrades.slice(0, 10000);
   }
 }
 
@@ -67,6 +85,7 @@ function ensureAgents() {
   if (!state.liveTrades) state.liveTrades = [];
   if (!state.openTrades) state.openTrades = [];
   if (!state.todayTrades) state.todayTrades = [];
+  if (!state.totalTradeCount) state.totalTradeCount = state.liveTrades.length || 0;
   if (!state.recentMemes) state.recentMemes = [];
   if (!state.goodWallets) state.goodWallets = [];
 }
@@ -111,6 +130,7 @@ function getBestMeme() {
 function tick() {
   checkDailyReset();
   ensureAgents();
+  cleanupOldTrades();
 
   if (Math.random() > 0.65) fetchPumpFunTokens();
 
@@ -159,7 +179,7 @@ function tick() {
         ca = best.ca;
         reason = best.walletCopies > 3 ? "Wallet-Copy" : "High Hype";
       } else {
-        const m = state.recentMemes[Math.floor(Math.random() * state.recentMemes.length)] || { name: "BONK", ca: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" };
+        const m = state.recentMemes[Math.floor(Math.random() * Math.max(1, state.recentMemes.length))] || { name: "BONK", ca: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" };
         meme = m.name;
         ca = m.ca;
         reason = "Random";
@@ -175,6 +195,7 @@ function tick() {
     const isLong = Math.random() > 0.5;
     const trade = {
       time: new Date().toLocaleTimeString(),
+      dateKey: getTodayKey(),
       coin, side: isLong ? "LONG" : "SHORT", agent,
       entry, tp: (parseFloat(entry)*1.01).toFixed(2), sl: (parseFloat(entry)*0.99).toFixed(2),
       exit: (parseFloat(entry)*(1+parseFloat(pnl)/100)).toFixed(2),
@@ -187,9 +208,9 @@ function tick() {
       if (state.openTrades.length > 15) state.openTrades.pop();
     } else {
       state.liveTrades.unshift(trade);
-      if (state.liveTrades.length > 1000) state.liveTrades.pop();
       state.todayTrades.unshift(trade);
-      if (state.todayTrades.length > 400) state.todayTrades.pop();
+      state.totalTradeCount++;
+      if (state.todayTrades.length > 2000) state.todayTrades.pop();
     }
 
     const memeInfo = meme ? ` (${meme}${reason ? " · " + reason : ""})` : '';
